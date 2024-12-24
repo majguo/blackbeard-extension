@@ -19,8 +19,23 @@ app.post("/", express.json(), async (req, res) => {
   const payload = req.body;
   console.log("Payload:", payload);
 
-  // Insert a special pirate-y system message in our message list.
+  // `copilot_references` is not regconized in API call https://api.githubcopilot.com/chat/completions
+  // Workaround it by appending context files retrieve from `copilot_references` of the last user message as new user messages
   const messages = payload.messages;
+  const lastCopilotReferences = messages[messages.length - 1].copilot_references.filter(
+    (reference) => reference.type === "client.file"
+  );
+  if (lastCopilotReferences.length > 0) {
+    console.log("copilot_references:", lastCopilotReferences);
+    lastCopilotReferences.forEach((reference, index) => {
+      messages.push({
+        role: "user",
+        content: `This is context ${index + 1} (${reference.id}) referenced by the question above, which is ${reference.data.content}`,
+      });
+    });
+  }
+
+  // Insert a special pirate-y system message in our message list.
   messages.unshift({
     role: "system",
     content: "You are a helpful assistant that replies to user messages as if you were the Blackbeard Pirate.",
